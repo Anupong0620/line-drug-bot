@@ -5,12 +5,20 @@ import requests
 
 app = Flask(__name__)
 
+# Route ตรวจสอบสถานะ
+@app.route('/')
+def home():
+    return 'LINE Drug Bot is running!'
+
+# อ่าน LINE TOKEN และ SECRET จาก Environment Variable
 LINE_TOKEN = os.getenv("LINE_TOKEN")
 LINE_SECRET = os.getenv("LINE_SECRET")
 
+# โหลดข้อมูลยา
 with open("drug_data.json", "r", encoding="utf-8") as f:
     drug_data = json.load(f)
 
+# ฟังก์ชันสำหรับตอบกลับรูปภาพพร้อมข้อความ
 def reply_image(reply_token, image_url, text):
     headers = {
         "Content-Type": "application/json",
@@ -32,6 +40,7 @@ def reply_image(reply_token, image_url, text):
     }
     requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=body)
 
+# Webhook สำหรับรับข้อความจาก LINE
 @app.route("/webhook", methods=["POST"])
 def webhook():
     payload = request.json
@@ -46,11 +55,3 @@ def webhook():
             else:
                 reply_image(reply_token, "https://via.placeholder.com/400x400.png?text=No+Image", "ไม่พบข้อมูลยา")
     return jsonify({"status": "ok"})
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
-
-@app.route('/')
-def home():
-    return 'LINE Drug Bot is running!'
-
