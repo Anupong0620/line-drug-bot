@@ -1,7 +1,7 @@
-from flask import Flask, request, jsonify
-import requests
-import json
 import os
+import json
+import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -18,7 +18,7 @@ LINE_SECRET = os.getenv("LINE_SECRET")
 with open("drug_data.json", "r", encoding="utf-8") as f:
     drug_data = json.load(f)
 
-# ฟังก์ชันสำหรับตอบกลับรูปภาพพร้อมข้อความ
+# ฟังก์ชันส่งข้อความ + รูป
 def reply_image(reply_token, image_url, text):
     headers = {
         "Content-Type": "application/json",
@@ -40,26 +40,32 @@ def reply_image(reply_token, image_url, text):
     }
     requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=body)
 
-# Webhook
+# ฟังก์ชันส่งเฉพาะข้อความ
+def reply_text(reply_token, text):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {LINE_TOKEN}"
+    }
+    body = {
+        "replyToken": reply_token,
+        "messages": [{"type": "text", "text": text}]
+    }
+    requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=body)
+
+# Webhook จาก LINE
 @app.route("/webhook", methods=["POST"])
 def webhook():
     payload = request.json
-    for event in payload.get("events", []):
+    for event in payload["events"]:
         if event["type"] == "message" and event["message"]["type"] == "text":
             query = event["message"]["text"].lower().strip()
             reply_token = event["replyToken"]
 
-            # ตรวจสอบว่ามีคำค้นในฐานข้อมูลหรือไม่
             if query in drug_data:
                 info = drug_data[query]
                 reply_image(reply_token, info["image"], info["text"])
             else:
-                reply_image(
-                    reply_token,
-                    "https://via.placeholder.com/400x400.png?text=No+Image",
-                    "ไม่พบข้อมูลยา"
-                )
-
+                reply_text(reply_token, "ไม่พบข้อมูล")
     return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
